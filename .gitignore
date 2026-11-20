@@ -1,0 +1,28 @@
+# Local environment, build output, and generated files
+.venv/
+__pycache__/
+*.py[cod]
+build/
+dist/
+tmp/
+*.exe
+*.zip
+*.log
+.claude/
+~$*
+
+# Local input/output paths and saved session settings
+*_config.json
+!程序/packing_config.json
+
+# Keep only the shared templates under this directory
+/第三功能资料/
+/测试数据/
+/模板/*
+!/模板/港口.xlsx
+!/模板/港口配置.xlsx
+!/模板/QC报告/
+/模板/QC报告/*
+!/模板/QC报告/INLINE 模板.xlsm
+!/模板/QC报告/PASS 模板.xlsm
+!/模板/断针记录模板.docx

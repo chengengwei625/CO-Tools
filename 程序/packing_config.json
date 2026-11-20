@@ -1,0 +1,156 @@
+{
+  "custom_pack_profiles": [
+    {
+      "id": "custom:套装·2件套（按套装箱）1",
+      "name_zh": "套装·2件套（按套装箱）1",
+      "method": "loose",
+      "sizes": [],
+      "tiers": [
+        [
+          "*",
+          90
+        ]
+      ],
+      "net_k": 0.044,
+      "gross_add": 0.8,
+      "gross_add_mid": 0.6,
+      "gross_add_small": 0.5,
+      "allowance": 3,
+      "pieces_per_pack": 2,
+      "cap_mid": 0,
+      "cap_small": 0
+    },
+    {
+      "id": "custom:单件 BRA 挂衣架入胶袋 修改",
+      "name_zh": "单件 BRA 挂衣架入胶袋 修改",
+      "method": "loose",
+      "sizes": [
+        "30A",
+        "30B",
+        "32A",
+        "32B",
+        "32C",
+        "32D",
+        "34A",
+        "34B",
+        "34C",
+        "34D",
+        "34DD",
+        "36B",
+        "36C",
+        "36D",
+        "36DD",
+        "38B",
+        "38C",
+        "38D",
+        "40B",
+        "40C",
+        "40D",
+        "42C",
+        "42D"
+      ],
+      "tiers": [
+        [
+          "30A",
+          65
+        ],
+        [
+          "34D",
+          55
+        ],
+        [
+          "40B",
+          40
+        ]
+      ],
+      "net_k": 0.11,
+      "gross_add": 1.5,
+      "gross_add_mid": 0.6,
+      "gross_add_small": 0.5,
+      "allowance": 3,
+      "pieces_per_pack": 1,
+      "cap_mid": 0,
+      "cap_small": 0
+    },
+    {
+      "id": "custom:套装·2件套（按套装箱）",
+      "name_zh": "套装·2件套（按套装箱）",
+      "method": "loose",
+      "sizes": [],
+      "tiers": [
+        [
+          "*",
+          90
+        ]
+      ],
+      "net_k": 0.044,
+      "gross_add": 0.8,
+      "gross_add_mid": 0.6,
+      "gross_add_small": 0.5,
+      "allowance": 3,
+      "pieces_per_pack": 2,
+      "cap_mid": 60,
+      "cap_small": 30
+    },
+    {
+      "id": "custom:套装·2件套（按套装箱）2",
+      "name_zh": "套装·2件套（按套装箱）2",
+      "method": "loose",
+      "sizes": [],
+      "tiers": [
+        [
+          "*",
+          90
+        ]
+      ],
+      "net_k": 0.044,
+      "gross_add": 0.8,
+      "gross_add_mid": 0.6,
+      "gross_add_small": 0.5,
+      "allowance": 3,
+      "pieces_per_pack": 2,
+      "cap_mid": 60,
+      "cap_small": 30
+    },
+    {
+      "id": "custom:标准·90件/箱（文胸类）",
+      "name_zh": "标准·90件/箱（文胸类）",
+      "method": "loose",
+      "sizes": [],
+      "tiers": [
+        [
+          "*",
+          90
+        ]
+      ],
+      "net_k": 0.063,
+      "gross_add": 0.8,
+      "gross_add_mid": 0.6,
+      "gross_add_small": 0.5,
+      "allowance": 3,
+      "pieces_per_pack": 1,
+      "cap_mid": 60,
+      "cap_small": 30
+    },
+    {
+      "id": "custom:标准·260件/箱",
+      "name_zh": "标准·260件/箱",
+      "method": "loose",
+      "sizes": [],
+      "tiers": [
+        [
+          "*",
+          260
+        ]
+      ],
+      "net_k": 0.046,
+      "gross_add": 0.8,
+      "gross_add_mid": 0.6,
+      "gross_add_small": 0.5,
+      "allowance": 3,
+      "pieces_per_pack": 1,
+      "cap_mid": 150,
+      "cap_small": 100
+    }
+  ]
+}
