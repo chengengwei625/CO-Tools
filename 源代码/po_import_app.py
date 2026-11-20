@@ -226,11 +226,15 @@ def _size_sort_key(s):
 
 # ── Inline-editable Treeview ──────────────────────────────────────────────
 class InlineEditTreeview(ttk.Treeview):
-    def __init__(self, parent, editable_cols, paste_table=None, batch_columns=(), **kw):
+    def __init__(self, parent, editable_cols, paste_table=None, batch_columns=(),
+                 move_to_empty=None, date_picker=None, **kw):
         super().__init__(parent, **kw)
         self.editable_cols = editable_cols
         self.paste_table = paste_table
         self.batch_columns = set(batch_columns)
+        self.move_to_empty = move_to_empty or {}
+        self.date_picker = date_picker
+        self._calendar_icon = self._make_calendar_icon() if date_picker else None
         self._batch_column = None
         self._editor = None
         self._batch_rows = {}
@@ -242,6 +246,16 @@ class InlineEditTreeview(ttk.Treeview):
             self.bind('<Control-Double-Button-1>', self._toggle_batch_cell)
             self.bind('<Return>', self._start_batch_edit)
             self.bind('<Escape>', self._cancel_batch_selection)
+
+    def _make_calendar_icon(self):
+        icon = tk.PhotoImage(master=self, width=14, height=14)
+        # Calendar outline, binding rings, and date squares.
+        for rectangle in ((1, 2, 13, 3), (1, 5, 13, 6), (1, 12, 13, 13),
+                          (1, 2, 2, 13), (12, 2, 13, 13),
+                          (4, 0, 5, 4), (9, 0, 10, 4),
+                          (4, 8, 6, 10), (8, 8, 10, 10)):
+            icon.put('#334155', to=rectangle)
+        return icon
 
     def _toggle_batch_cell(self, event):
         if self.identify_region(event.x, event.y) != 'cell':
@@ -276,6 +290,17 @@ class InlineEditTreeview(ttk.Treeview):
             self._batch_column = None
             return 'break'
 
+    def clear_selection(self):
+        self.finish_edit()
+        self.selection_remove(self.selection())
+        self.focus('')
+        self._batch_rows.clear()
+        self._batch_column = None
+        self._batch_click = False
+
+    def batch_selected_rows(self):
+        return tuple(self._batch_rows)
+
     def _start_batch_edit(self, event=None):
         for row in reversed(self._batch_rows):
             if self.bbox(row, self._batch_column):
@@ -307,11 +332,32 @@ class InlineEditTreeview(ttk.Treeview):
         if not bbox:
             return
         x, y, w, h = bbox
-        entry = tk.Entry(self, font=('Arial', 9))
-        entry.place(x=x, y=y, width=w, height=h)
+        editor = ttk.Frame(self)
+        editor.place(x=x, y=y, width=w, height=h)
+        entry = tk.Entry(editor, font=('Arial', 9))
+        target_rows = batch_rows or (row,)
+        if column == 'fac_date' and self.date_picker:
+            def pick_date():
+                initial = entry.get()
+                self.finish_edit(save=False)
+
+                def save_date(value):
+                    changed = False
+                    for target in target_rows:
+                        if self.exists(target) and self.set(target, column) != value:
+                            self.set(target, column, value)
+                            changed = True
+                    if changed:
+                        self.event_generate('<<RowEdited>>')
+
+                self.date_picker(initial, save_date)
+
+            ttk.Button(editor, image=self._calendar_icon, takefocus=False,
+                       style='CalendarIcon.TButton', command=pick_date).pack(side='right', fill='y')
+        entry.pack(side='left', fill='both', expand=True)
         entry.insert(0, self.set(row, column))
         entry.select_range(0, 'end')
-        self._editor = (entry, batch_rows or (row,), column, bool(batch_rows))
+        self._editor = (entry, target_rows, column, bool(batch_rows))
 
         def finish_from_key(event):
             confirm = event.keysym == 'Return'
@@ -335,11 +381,19 @@ class InlineEditTreeview(ttk.Treeview):
         changed = False
         if save and (not is_batch or apply_batch):
             value = entry.get()
+            move_to = self.move_to_empty.get(column)
             for row in rows:
-                if self.exists(row) and value != self.set(row, column):
-                    self.set(row, column, value)
+                if not self.exists(row):
+                    continue
+                row_value = value
+                if move_to and value.strip() and not self.set(row, move_to).strip():
+                    self.set(row, move_to, value)
+                    row_value = ''
                     changed = True
-        entry.destroy()
+                if row_value != self.set(row, column):
+                    self.set(row, column, row_value)
+                    changed = True
+        entry.master.destroy()
         if changed:
             self.event_generate('<<RowEdited>>')
 
@@ -381,6 +435,7 @@ class App(ttk.Frame):
         s.configure('Sub.TLabel',        font=('Arial', 8), foreground='gray')
         s.configure('TLabelframe.Label', font=('Arial', 9, 'bold'))
         s.configure('Accent.TButton',    font=('Arial', 10, 'bold'))
+        s.configure('CalendarIcon.TButton', padding=(5, 0), anchor='center')
         s.configure('TNotebook.Tab',     font=('Arial', 10), padding=(14, 6))
 
     # ── Config persistence ────────────────────────────────────────────────
@@ -534,8 +589,10 @@ class App(ttk.Frame):
                    command=self._pick_fac_date).pack(side='left', padx=(0, 8))
         ttk.Button(extra_row, text='配置',
                    command=self._fill_fac_style).pack(side='left')
+        ttk.Button(extra_row, text='清空',
+                   command=self._clear_factory_fields).pack(side='left', padx=(4, 0))
         ttk.Label(extra_row,
-                  text='款号按勾选填入，点击 ☑ 列头可全选或取消。日期填入整列。',
+                  text='配置只补空白，多选时只填所选行。款号按勾选填入。',
                   style='Sub.TLabel').pack(side='left', padx=(8, 0))
 
         # ---- 多拼色拆分：作用于选中行（也可双击色号/色名列） ----
@@ -553,7 +610,7 @@ class App(ttk.Frame):
         ttk.Label(hdr_colour, text='颜色映射',
                   font=('Arial', 9, 'bold')).pack(side='left')
         ttk.Label(hdr_colour,
-                  text='   单击 ✏ 编辑。按住 Ctrl 点选同一列的颜色名称或厂款号，按 Enter 编辑，再按 Enter 保存。',
+                  text='   单击 ✏ 编辑。按住 Ctrl 点选同列的颜色名称、厂款号、厂款号②或工厂出厂期，按 Enter 编辑，再按 Enter 保存。',
                   style='Sub.TLabel').pack(side='left')
 
         colour_cols = ('cust_code', 'cust_name', 'colour_id',
@@ -562,7 +619,10 @@ class App(ttk.Frame):
                        'fac_date')
         self.colour_tv = InlineEditTreeview(
             p, editable_cols=[2, 3, 4, 6, 8, 9],
-            paste_table=self._paste_colour_table, batch_columns=('colour_cn', 'fac_style'),
+            paste_table=self._paste_colour_table,
+            batch_columns=('colour_cn', 'fac_style', 'fac_style2', 'fac_date'),
+            move_to_empty={'fac_style2': 'fac_style'},
+            date_picker=self._show_fac_date_picker,
             columns=colour_cols, show='headings',
             selectmode='extended', height=7)
         self.colour_tv.heading('cust_code', text='客户色号（自动）')
@@ -575,7 +635,7 @@ class App(ttk.Frame):
         self.colour_tv.heading('fac_style', text='厂款号 ✏')
         self.colour_tv.heading('fac2_chk',  text='☑',
                                command=lambda: self._toggle_all_chk(7))
-        self.colour_tv.heading('fac_style2', text='厂款号2 ✏')
+        self.colour_tv.heading('fac_style2', text='厂款号② ✏')
         self.colour_tv.heading('fac_date',  text='工厂出厂期 ✏')
         self.colour_tv.column('cust_code', width=100, anchor='center')
         self.colour_tv.column('cust_name', width=100, anchor='center')
@@ -652,10 +712,15 @@ class App(ttk.Frame):
         self.undo_colour_import_btn.grid(row=3, column=1, sticky='ew', padx=(8, 0))
         self.dest_tv.pack(fill='x')
 
-        # Tk clicks do not bubble to the page frame, so bind each background surface.
-        for widget in (p, *p.winfo_children()):
-            if isinstance(widget, (ttk.Frame, ttk.Label)) or widget is self.dest_tv:
-                widget.bind('<ButtonRelease-1>', self._clear_colour_batch_on_blank, add='+')
+        # Tk clicks do not bubble to the page frame, so bind the background surfaces.
+        def bind_background(widget):
+            if isinstance(widget, (ttk.Frame, ttk.Label, InlineEditTreeview)):
+                widget.bind('<ButtonRelease-1>', self._clear_config_selection_on_blank, add='+')
+            if isinstance(widget, ttk.Frame):
+                for child in widget.winfo_children():
+                    bind_background(child)
+
+        bind_background(p)
 
     def _run_erp_task(self, status, task, on_done):
         self.erp_login_btn.state(['disabled'])
@@ -1050,11 +1115,12 @@ class App(ttk.Frame):
         table.bind('<ButtonRelease-1>', edit_category)
         table.bind('<Configure>', lambda _: close_editor())
 
-    def _clear_colour_batch_on_blank(self, event):
-        if event.widget is self.dest_tv:
-            if self.dest_tv.identify_region(event.x, event.y) != 'nothing':
-                return
-        self.colour_tv._cancel_batch_selection()
+    def _clear_config_selection_on_blank(self, event):
+        widget = event.widget
+        if isinstance(widget, InlineEditTreeview) and widget.identify_region(event.x, event.y) != 'nothing':
+            return
+        self.colour_tv.clear_selection()
+        self.dest_tv.clear_selection()
 
     # ── Tab 3: Preview & generate ─────────────────────────────────────────
     def _build_tab_preview(self):
@@ -1373,9 +1439,14 @@ class App(ttk.Frame):
             self.colour_tv.item(i, values=vals)
 
     def _pick_fac_date(self):
+        self._show_fac_date_picker(self.fac_date_var.get(), self.fac_date_var.set)
+
+    def _show_fac_date_picker(self, selected, on_choose):
         today = date.today()
-        selected = self.fac_date_var.get()
-        initial = date.fromisoformat(selected) if selected else today
+        try:
+            initial = date.fromisoformat(selected.strip()) if selected else today
+        except ValueError:
+            initial = today
         year, month = initial.year, initial.month
         calendar = Calendar()
 
@@ -1396,8 +1467,8 @@ class App(ttk.Frame):
                 row=1, column=col, sticky='ew', pady=(4, 2))
 
         def choose(value):
-            self.fac_date_var.set(value)
             win.destroy()
+            on_choose(value)
 
         def show_month():
             month_label.configure(text=f'{year}年{month}月')
@@ -1440,20 +1511,33 @@ class App(ttk.Frame):
         win.focus_set()
 
     def _fill_fac_style(self):
-        """厂款号按勾选填入，已选择的工厂出厂期填入所有行。"""
-        self.colour_tv.finish_edit()
-        v1 = self.fac_style_var.get().strip()
-        v2 = self.fac_style2_var.get().strip()
-        fac_date = self.fac_date_var.get()
-        for item in self.colour_tv.get_children():
-            vals = list(self.colour_tv.item(item, 'values'))
-            if vals[5] == '☑':
-                vals[6] = v1
-            if vals[7] == '☑':
-                vals[8] = v2
-            if fac_date:
-                vals[9] = fac_date
-            self.colour_tv.item(item, values=vals)
+        """只给目标行的空白字段填入配置，款号仍按各行勾选填入。"""
+        table = self.colour_tv
+        table.finish_edit()
+        items = table.batch_selected_rows() or table.get_children()
+        factory_fields = (
+            ('fac_style', self.fac_style_var.get().strip(), 'fac_chk'),
+            ('fac_style2', self.fac_style2_var.get().strip(), 'fac2_chk'),
+            ('fac_date', self.fac_date_var.get().strip(), None),
+        )
+        for item in items:
+            for column, value, checkbox in factory_fields:
+                if value and not str(table.set(item, column)).strip():
+                    if checkbox is None or table.set(item, checkbox) == '☑':
+                        table.set(item, column, value)
+        self._refresh_preview()
+
+    def _clear_factory_fields(self):
+        if not messagebox.askokcancel(
+            '确认清空', '是否清空“厂款号”、“厂款号②”、“出厂日期”所在列的所有内容。',
+            parent=self, default=messagebox.CANCEL,
+        ):
+            return
+        table = self.colour_tv
+        table.finish_edit(save=False)
+        for item in table.get_children():
+            for column in ('fac_style', 'fac_style2', 'fac_date'):
+                table.set(item, column, '')
         self._refresh_preview()
 
     def _split_selected(self):

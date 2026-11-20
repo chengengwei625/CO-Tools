@@ -2,7 +2,7 @@
 
 面向服装外贸跟单场景的 Windows 桌面工具，将订单整理、港口与数量汇总、验货资料、装箱单、出货表和箱唛处理集中到一个中文界面，减少重复录入和手工整理表格的工作。
 
-工具基于 Python 与 Tkinter 开发，支持源码运行，也可打包为 Windows EXE。当前版本为 **1.1.2**。
+工具基于 Python 与 Tkinter 开发，支持源码运行，也可打包为 Windows EXE。当前版本为 **1.1.3**。
 
 ## 功能一览
 
@@ -116,7 +116,7 @@ Set-Location ./源代码
 & ../.venv/Scripts/python.exe -m PyInstaller --noconfirm 'CO 外贸跟单工具.spec'
 ```
 
-当前版本的构建结果为 `源代码/dist/CO 外贸跟单工具_1.1.2.exe`。条码字体及其许可通过打包配置一起加入程序；`check_frozen_startup.ps1` 可用于检查 EXE 启动。
+当前版本的构建结果为 `源代码/dist/CO 外贸跟单工具_1.1.3.exe`。条码字体及其许可通过打包配置一起加入程序；`check_frozen_startup.ps1` 可用于检查 EXE 启动。
 
 版本统一在 `源代码/app_version.py` 的 `APP_VERSION` 中维护，窗口标题、EXE 文件名和 Windows 文件属性使用同一版本。每次发布递增版本号，修订号与次版本号逢 10 进位，例如 `1.1.9 → 1.2.0`、`1.9.9 → 2.0.0`；可通过 `next_version(APP_VERSION)` 计算下一版。
 

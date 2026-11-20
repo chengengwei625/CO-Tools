@@ -1,7 +1,7 @@
 """发布版本：每段按十进制进位，1.1.9 的下一版为 1.2.0。"""
 
 APP_NAME = 'CO 外贸跟单工具'
-APP_VERSION = '1.1.2'
+APP_VERSION = '1.1.3'
 APP_TITLE = f'{APP_NAME}_{APP_VERSION}'
 
 

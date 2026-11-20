@@ -765,13 +765,7 @@ def _apply_field_reference(base, row, port, field_lookup):
 
 def _source_record_base(row, port=None, field_lookup=None):
     customer_style, customer_colour = _split_style_colour(row.get('STYLE COLOUR CODE'))
-    description = _clean(row.get('STYLE DESCRIPTION'))
-    # Use the same suffix rule as ①订单明细导入. A missing description gives no pack evidence.
-    is_pack = None
-    if description:
-        is_pack = re.search(r' (?:SET|[0-9]*[1-9]PK)$', description, re.IGNORECASE) is not None
     base = {
-        'is_pack': is_pack,
         '合同号：': _clean(row.get('ORDER NUMBER')),
         '客款号': customer_style,
         '客户色号': customer_colour,
@@ -861,8 +855,6 @@ def _expand_setpacks(records, component_lookup):
         base_en_parts = _en_pieces(rec)
         for i, comp in enumerate(comps):
             new_rec = dict(rec)
-            if n > 1:
-                new_rec['is_pack'] = True
             for field in ('颜色', '内部色号', '工厂出厂期'):
                 if comp.get(field):
                     new_rec[field] = comp[field]
@@ -947,13 +939,15 @@ def _ordered_sizes(records):
     return sizes[:SOURCE_SIZE_COLS]
 
 
-def _expand_rec_fac(rec, keep_both):
-    """Use 厂款号2 when set, and include the first style when the record needs expanding."""
+def _expand_rec_fac(rec):
+    """If the record has a 厂款号2, return 2 copies — one per 厂款号."""
     fac2 = str(rec.get('厂款号2') or '').strip()
     if not fac2:
         return [rec]
-    second = {**rec, '厂款号：': fac2}
-    return [rec, second] if keep_both else [second]
+    r1 = dict(rec)
+    r2 = dict(rec)
+    r2['厂款号：'] = fac2
+    return [r1, r2]
 
 
 def _expand_rec_colours(rec):
@@ -979,8 +973,9 @@ def _expand_rec_fac_colours(rec):
 
     若「厂款号拆分」存在（步骤①拆分弹窗逐件填写，'|' 分隔）且颜色分段 >1，
     直接按索引配对——每件各自的颜色/英文颜色/厂款号，支持任意 N 件、任意厂款号组合
-    （如 3 件中 2 件同厂款号、1 件不同）。套装或多色仍按厂款号和颜色展开。
-    CSV 明确为普通单色款时，已有厂款号2就只输出该厂款号，数量只计一次。
+    （如 3 件中 2 件同厂款号、1 件不同）。否则回退到旧逻辑：先按 厂款号2 做
+    厂款号交叉（_expand_rec_fac），再按 / 拆颜色（_expand_rec_colours）——
+    对应「同色 2 件、2 个厂款号」的旧场景。
     """
     fac_parts = _fac_pieces(rec)
     colour = str(rec.get('颜色') or '').strip()
@@ -996,8 +991,7 @@ def _expand_rec_fac_colours(rec):
             new_rec['厂款号：'] = fac_parts[i] if i < len(fac_parts) else fac_parts[-1]
             result.append(new_rec)
         return result
-    keep_both = len(cn_parts) > 1 or rec.get('is_pack') is not False
-    return [c for f in _expand_rec_fac(rec, keep_both) for c in _expand_rec_colours(f)]
+    return [c for f in _expand_rec_fac(rec) for c in _expand_rec_colours(f)]
 
 
 def _write_source_sheet(ws, records, include_port, include_actual_dates=False):
